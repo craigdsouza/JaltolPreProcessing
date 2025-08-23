@@ -1,0 +1,11 @@
+{
+    "raster_dir": "D:/Code/Jaltol/JaltolPreProcessing/data/raster/Karnataka/projected",
+    "vector": "D:/Code/Jaltol/JaltolPreProcessing/data/vector/Karnataka/Karnataka.shp",
+    "class_value": 2,
+    "out_csv": "D:/Code/Jaltol/JaltolPreProcessing/outputs/lulc_area_by_village.csv",
+    "all_touched": false,
+    "target_epsg": null,
+    "limit_polygons": 2,
+    "log_level": "DEBUG",
+    "log_file": "D:/Code/Jaltol/JaltolPreProcessing/logs/compute_lulc_area.log"
+  }

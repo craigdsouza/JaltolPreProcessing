@@ -1,0 +1,11 @@
+cache/
+data/
+logs/
+outputs/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz

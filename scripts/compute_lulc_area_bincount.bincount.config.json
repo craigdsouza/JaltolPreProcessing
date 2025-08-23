@@ -1,0 +1,13 @@
+{
+    "raster_dir": "D:/Code/Jaltol/JaltolPreProcessing/data/raster/Karnataka/projected",
+    "vector": "D:/Code/Jaltol/JaltolPreProcessing/data/vector/Karnataka/Karnataka.shp",
+    "class_value": 2,
+    "out_csv": "D:/Code/Jaltol/JaltolPreProcessing/outputs/lulc_area_by_village_bincount.csv",
+    "all_touched": false,
+    "limit_polygons": 20,
+    "raster_glob": "proj32643_lulc250k_*.tif",
+    "log_level": "DEBUG",
+    "log_file": "D:/Code/Jaltol/JaltolPreProcessing/logs/compute_lulc_area_bincount.log",
+    "label_cache_tif": "D:/Code/Jaltol/JaltolPreProcessing/cache/village_labels.tif",
+    "label_index_json": "D:/Code/Jaltol/JaltolPreProcessing/cache/village_label_index.json"
+  }
