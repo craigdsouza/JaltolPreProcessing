@@ -194,7 +194,17 @@ def main():
     raster_dir = Path(cfg["raster_dir"])
     shp_path = Path(cfg["vector"])
     out_csv = Path(cfg["out_csv"])
-    class_value = float(cfg["class_value"])  # support float-coded rasters
+    # Backward compatible: support class_values (list) or class_value (single)
+    cfg_class_values = cfg.get("class_values")
+    if cfg_class_values is None:
+        single_val = cfg.get("class_value")
+        if isinstance(single_val, list):
+            cfg_class_values = single_val
+        elif single_val is not None:
+            cfg_class_values = [single_val]
+        else:
+            raise KeyError("Provide 'class_values' list or 'class_value' in config.")
+    class_values = [int(v) for v in cfg_class_values]
     all_touched = bool(cfg.get("all_touched", False))
     limit_polygons = cfg.get("limit_polygons")
     raster_glob = str(cfg.get("raster_glob", "proj32643_lulc250k_*.tif"))
@@ -303,29 +313,45 @@ def main():
 
         # Vectorized bincount on labels masked by class
         t_mask0 = time.perf_counter()
-        mask = (~band.mask) & (band == class_value) # mask is a combination of the mask of the class value and the default mask of the raster
+        # Build a compact index for requested classes
+        max_class_value = int(max(class_values))
+        class_idx = np.full(max_class_value + 1, -1, dtype=np.int16)
+        for i, cv in enumerate(class_values):
+            if 0 <= cv <= max_class_value:
+                class_idx[cv] = i
+        # Valid pixels and selected classes only
+        band_int = band.astype(np.int32, copy=False)
+        valid = ~band_int.mask
+        band_data = band_int.data  # plain ndarray
+        in_range = (band_data >= 0) & (band_data <= max_class_value)
+        idx_vals = np.full(band_data.shape, -1, dtype=np.int16)
+        if in_range.any():
+            idx_vals[in_range] = class_idx[band_data[in_range]]
+        sel = valid & (idx_vals >= 0)
         t_mask1 = time.perf_counter()
+
         t_bin0 = time.perf_counter()
-        counts = np.bincount(labels[mask].ravel(), minlength=n_labels + 1) 
-        # counts is an array of length n_labels + 1, where the index is the label and the value is the count of the label
+        # Flatten per selected pixels
+        lab = labels[sel].ravel().astype(np.int64, copy=False)
+        cls = idx_vals[sel].ravel().astype(np.int64, copy=False)
+        K = len(class_values)
+        flat = lab * K + cls
+        counts_all = np.bincount(flat, minlength=(n_labels + 1) * K)
+        counts_matrix = counts_all.reshape(n_labels + 1, K)
         t_bin1 = time.perf_counter()
 
         logger.debug(
-            f"mask: {(t_mask1 - t_mask0):.3f}s | bincount: {(t_bin1 - t_bin0):.3f}s"
+            f"mask: {(t_mask1 - t_mask0):.3f}s | bincount: {(t_bin1 - t_bin0):.3f}s | positives: {int(sel.sum())}"
         )
 
         # Build results
         for idx in range(1, n_labels + 1):
             pc11 = index_to_id[idx]
-            class_pixels = int(counts[idx])
-            area_ha = class_pixels * pixel_area_m2 / 10000.0
-            results.append(
-                {
-                    "pc11_tv_id": pc11,
-                    "hydrological_year": hydro_year,
-                    "area_ha": float(area_ha),
-                }
-            )
+            row = {"pc11_tv_id": pc11, "hydrological_year": hydro_year}
+            for j, cv in enumerate(class_values):
+                class_pixels = int(counts_matrix[idx, j])
+                row[f"{cv}_area_ha"] = class_pixels * pixel_area_m2 / 10000.0
+            results.append(row)
         t_r1 = time.perf_counter()
         logger.info(
             f"Finished {tif_path.name} | time: {(t_r1 - t_r0):.2f}s"
